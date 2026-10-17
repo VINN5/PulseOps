@@ -1,0 +1,46 @@
+[project]
+name = "pulseops"
+version = "0.1.0"
+description = "Evidence-first incident investigator for OpenTelemetry services"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.0",
+    "httpx",
+    "structlog",
+    "python-dotenv",
+    "numpy",
+    "scipy",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+    "hypothesis",
+    "respx",
+]
+llm = [
+    "openai",
+    "anthropic",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["backend/src"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
