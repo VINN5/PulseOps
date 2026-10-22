@@ -29,3 +29,11 @@ def test_pipeline_finds_orders_upstream_and_decoy_unmatched():
 def test_pipeline_records_what_was_examined():
     r = run_pipeline(CAP)
     assert "latency_p99" in r.metrics_examined["payments"]
+
+
+def test_pipeline_uses_detector_baseline_constant():
+    from pulseops.core import pipeline
+    from pulseops.core.change_points.detector import DEFAULT_BASELINE_POINTS
+
+    assert pipeline.DEFAULT_BASELINE_POINTS is DEFAULT_BASELINE_POINTS
+    assert not hasattr(pipeline, "BASELINE_SAMPLES")
