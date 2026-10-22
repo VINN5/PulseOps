@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from pulseops.core.change_points.detector import DEFAULT_BASELINE_POINTS
 from pulseops.core.change_points.evidence import detect_all
 from pulseops.core.events.align import Candidate, align, load_events, unmatched
 from pulseops.core.graph.graph import Graph, build_graph, upstream_candidates
@@ -13,9 +14,6 @@ from pulseops.core.ingest.snapshot import SnapshotBackend
 from pulseops.core.scoring.baseline_c import ScoredHypothesis, score_changes
 from pulseops.models.evidence import Evidence
 
-# TODO: replace with the detector's own constant once detector.py is checked,
-# so the graph window and the detector baseline cannot drift apart.
-BASELINE_SAMPLES = 40
 LOOKBACK = timedelta(minutes=60)
 
 
@@ -57,7 +55,7 @@ def run_pipeline(capture_dir: Path) -> PipelineResult:
     first_service = backend.list_services()[0]
     first_metric = backend.list_metrics(first_service)[0]
     series = backend.query_range(first_service, first_metric, start, end)
-    baseline_end = series.time_at(min(BASELINE_SAMPLES, len(series.values) - 1))
+    baseline_end = series.time_at(min(DEFAULT_BASELINE_POINTS, len(series.values) - 1))
 
     changes = load_events(capture_dir / "events.json")
     graph = build_graph(load_spans(capture_dir / "traces.json"), start, baseline_end)

@@ -7,6 +7,8 @@ import numpy as np
 
 from pulseops.core.ingest.base import Series
 
+DEFAULT_BASELINE_POINTS = 40
+
 
 @dataclass(frozen=True)
 class ChangePoint:
@@ -21,7 +23,7 @@ class ChangePoint:
 def detect_change_point(
     series: Series,
     *,
-    baseline_points: int = 40,
+    baseline_points: int = DEFAULT_BASELINE_POINTS,
     k: float = 0.5,          # CUSUM allowance, in robust-sigma units
     h: float = 8.0,          # CUSUM alarm threshold, in robust-sigma units
     after_window: int = 10,
