@@ -36,6 +36,7 @@ where = ["backend/src"]
 
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
+pythonpath = ["backend/tests"]
 
 [tool.ruff]
 line-length = 100
