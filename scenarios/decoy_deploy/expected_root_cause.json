@@ -1,0 +1,15 @@
+{
+  "service": "orders",
+  "claim_type": "resource_exhaustion",
+  "trigger": "chg-2291",
+  "decoys": [
+    "chg-2288"
+  ],
+  "allowed_alternates": [],
+  "injected_changes": {
+    "orders/db_pool_wait_p95": "2026-03-14T02:06:00+00:00",
+    "orders/latency_p99": "2026-03-14T02:07:00+00:00",
+    "checkout/latency_p99": "2026-03-14T02:09:00+00:00"
+  },
+  "synthetic": true
+}

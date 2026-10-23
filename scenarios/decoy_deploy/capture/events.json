@@ -1,0 +1,20 @@
+[
+  {
+    "id": "chg-2291",
+    "kind": "config_change",
+    "service": "orders",
+    "time": "2026-03-14T02:03:11+00:00",
+    "summary": "db_pool_size 50 -> 10",
+    "actor": "ci",
+    "ref": "commit abc123"
+  },
+  {
+    "id": "chg-2288",
+    "kind": "deploy",
+    "service": "payments",
+    "time": "2026-03-14T02:09:00+00:00",
+    "summary": "payments v2.14.0",
+    "actor": "ci",
+    "ref": "commit 9f3e1a"
+  }
+]
