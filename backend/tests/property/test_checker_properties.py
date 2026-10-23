@@ -54,6 +54,25 @@ def hypotheses(ids):
 
 SETTINGS = settings(max_examples=300, deadline=None)
 
+LATE_SYMPTOM = st.datetimes(
+    min_value=datetime(2026, 3, 14, 2, 9),
+    max_value=datetime(2026, 3, 14, 2, 14),
+    timezones=st.just(timezone.utc),
+)  # after every metric change in this bundle, so time sanity can pass
+CITABLE = [e.id for e in BUNDLE.items
+           if e.type in (EvidenceType.CHANGE_EVENT, EvidenceType.METRIC_CHANGE)]
+targeted = st.builds(
+    Hypothesis,
+    id=st.just("H"),
+    title=st.just("t"),
+    claim_type=st.sampled_from([ClaimType.BAD_DEPLOY, ClaimType.BAD_CONFIG]),
+    service=st.none(),
+    confidence=st.floats(min_value=0.0, max_value=1.0),
+    supporting=st.lists(st.sampled_from(CITABLE), min_size=1, max_size=5, unique=True),
+    contradicting=st.lists(st.sampled_from(REAL_IDS), max_size=3, unique=True),
+    verification=st.lists(requests, max_size=0),
+)
+
 
 @SETTINGS
 @given(h=hypotheses(mixed_ids), t=symptom_times)
@@ -82,7 +101,7 @@ def test_accepted_means_everything_cited_exists_and_fits(h, t):
 
 
 @SETTINGS
-@given(h=hypotheses(real_only_ids), t=symptom_times)
+@given(h=targeted, t=LATE_SYMPTOM)
 def test_accepted_deploy_and_config_claims_cite_the_right_event_kind(h, t):
     # Independent of rules.py: re-states the guide's 4.4 requirement directly.
     if check_hypothesis(h, BUNDLE, t) != []:
@@ -107,3 +126,13 @@ def test_checker_never_crashes_and_is_deterministic(h, t):
     assert isinstance(first, list)
     assert all(isinstance(v, Violation) for v in first)
     assert first == check_hypothesis(h, BUNDLE, t)
+
+
+def test_positive_control_a_good_bad_deploy_claim_is_accepted():
+    deploy = next(e for e in BUNDLE.items
+                  if e.type == EvidenceType.CHANGE_EVENT and e.subtype == "deploy")
+    metric = next(e for e in BUNDLE.items if e.type == EvidenceType.METRIC_CHANGE)
+    h = Hypothesis(id="H", title="t", claim_type=ClaimType.BAD_DEPLOY, confidence=0.5,
+                   supporting=[deploy.id, metric.id])
+    t = datetime(2026, 3, 14, 2, 14, tzinfo=timezone.utc)
+    assert check_hypothesis(h, BUNDLE, t) == []
