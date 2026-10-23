@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pulseops.core.evidence_bundle.bundle import build_bundle
 from pulseops.core.pipeline import LOOKBACK, PipelineResult
 
 
@@ -8,6 +9,8 @@ def _ext(ev) -> str:
 
 
 def render_report(r: PipelineResult) -> str:
+    bundle = build_bundle(r)
+    kept = {e.id for e in bundle.items}  # only cite what the bundle actually contains
     lines: list[str] = []
     t = r.trigger
     lines.append(f"INCIDENT  {t['service']} {t['symptom_metric']} alert at {t['alert_time']}")
@@ -46,5 +49,6 @@ def render_report(r: PipelineResult) -> str:
             lines.append(f"     against: no {c.service} metric change detected within "
                          f"{minutes} min of {_ext(c)} (examined: {examined})")
         else:
-            lines.append(f"     for: {c.id}")
+            cited = [c.id] + [i for i in bundle.supporting.get(c.id, []) if i in kept]
+            lines.append(f"     for: {', '.join(cited)}")
     return "\n".join(lines)
