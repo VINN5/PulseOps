@@ -42,6 +42,16 @@ def build_prompt(bundle: EvidenceBundle) -> str:
     return f"Return a JSON array of hypotheses. Cite only these evidence IDs: {ids}"
 
 
+_HINTS = {
+    "fabricated_id": "you cited evidence IDs that are not in the bundle",
+    "uncited": "a claim had no supporting evidence",
+    "type_fit": "the cited evidence does not fit the claim type or confidence",
+    "time_sanity": "cited evidence postdates the symptom",
+    "template_not_allowed": "a verification template is not on the allow-list",
+    "bad_params": "a verification request had the wrong parameters",
+}
+
+
 def _attempt(
     model: Model, prompt: str, bundle: EvidenceBundle, symptom_time: datetime
 ) -> tuple[list[Hypothesis], list[str], list[str]]:
@@ -64,8 +74,9 @@ def _attempt(
     except Exception:
         return [], ["checker_error"], ["checker_error: the output could not be checked"]
     reasons = [v.code for _, vs in result.rejected for v in vs]
-    # Only codes and details we generated; nothing from the model's own text.
-    feedback = [f"{v.code}: {v.detail}" for _, vs in result.rejected for v in vs]
+    # Feedback is built from our own fixed text keyed by violation code.
+    # Violation.detail echoes model-supplied strings, so it must not go back in.
+    feedback = [f"{c}: {_HINTS.get(c, 'rule violated')}" for c in sorted(set(reasons))]
     return result.accepted, reasons, feedback
 
 
