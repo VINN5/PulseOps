@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Protocol
 
 from pulseops.ai.citation_checker.checker import check_all
+from pulseops.ai.prompts.prompt import build_prompt
 from pulseops.core.evidence_bundle.bundle import EvidenceBundle
 from pulseops.models.claims import Hypothesis
 
@@ -34,12 +35,6 @@ def parse_output(raw: str) -> list[Hypothesis]:
         return [Hypothesis.model_validate(item) for item in data]
     except Exception as e:
         raise ValueError("bad_schema") from e
-
-
-def build_prompt(bundle: EvidenceBundle) -> str:
-    # Stub: the versioned prompt files come later.
-    ids = ", ".join(e.id for e in bundle.items)
-    return f"Return a JSON array of hypotheses. Cite only these evidence IDs: {ids}"
 
 
 _HINTS = {
