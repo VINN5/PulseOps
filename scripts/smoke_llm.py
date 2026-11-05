@@ -3,11 +3,14 @@ from __future__ import annotations
 
 import sys
 
+from dotenv import load_dotenv
+
 from pulseops.ai.llm_client.client import LLMError
 from pulseops.ai.llm_client.openai_compat import make_model
 
 
 def main() -> int:
+    load_dotenv()  # reads .env if present; variables already set in the shell win
     try:
         model = make_model()
         name = getattr(model, "provider_name", "anthropic")
