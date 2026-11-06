@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
+from pulseops.ai.hypotheses.orchestrator import parse_output
 from pulseops.ai.prompts.prompt import (
     CLOSE,
     OPEN,
@@ -12,6 +13,8 @@ from pulseops.ai.prompts.prompt import (
 )
 from pulseops.core.evidence_bundle.bundle import build_bundle
 from pulseops.core.pipeline import run_pipeline
+from pulseops.core.verification.templates import TEMPLATES
+from pulseops.models.claims import ClaimType, Hypothesis
 from pulseops.models.evidence import Evidence, EvidenceType
 
 POOL = Path(__file__).resolve().parents[3] / "scenarios" / "pool_exhaustion" / "capture"
@@ -49,9 +52,10 @@ def test_secret_cut_by_the_length_limit_leaves_no_prefix():
 
 
 def test_oversized_summary_is_truncated():
+    base = len(build_prompt(fake_bundle(ev("A"))))
     p = build_prompt(fake_bundle(ev("A" * 10_000)))
     assert "A" * 300 not in p
-    assert len(p) < 2_000
+    assert len(p) - base < 400
 
 
 def test_delimiters_in_evidence_cannot_close_the_block():
@@ -76,3 +80,23 @@ def test_every_real_bundle_id_appears_in_the_prompt():
 def test_prompt_is_deterministic_and_versioned():
     assert build_prompt(BUNDLE) == build_prompt(BUNDLE)
     assert PROMPT_VERSION in build_prompt(BUNDLE)
+
+
+def test_prompt_names_every_field_claim_type_and_template():
+    p = build_prompt(BUNDLE)
+    for name in Hypothesis.model_fields:
+        assert f'"{name}"' in p
+    for claim_type in ClaimType:
+        assert claim_type.value in p
+    for template, params in TEMPLATES.items():
+        assert template in p
+        for param in params:
+            assert param in p
+
+
+def test_prompt_example_parses_as_a_real_hypothesis():
+    p = build_prompt(BUNDLE)
+    line = next(ln for ln in p.splitlines() if ln.startswith("Example"))
+    hypotheses = parse_output(line[line.index("[") :])
+    assert len(hypotheses) == 1
+    assert hypotheses[0].claim_type in ClaimType
