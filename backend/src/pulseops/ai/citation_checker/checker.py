@@ -6,12 +6,15 @@ from datetime import datetime
 from pulseops.core.evidence_bundle.bundle import EvidenceBundle
 from pulseops.core.verification.templates import TEMPLATES
 from pulseops.models.claims import ClaimType, Hypothesis
+from pulseops.models.evidence import EvidenceType
 from pulseops.models.rules import check_type_fit
 
 
 @dataclass(frozen=True)
 class Violation:
-    code: str  # fabricated_id | uncited | type_fit | time_sanity | template_not_allowed | bad_params
+    # fabricated_id | uncited | type_fit | time_sanity | unlinked_change
+    # | template_not_allowed | bad_params
+    code: str
     hypothesis_id: str
     detail: str
 
@@ -43,6 +46,17 @@ def check_hypothesis(h: Hypothesis, bundle: EvidenceBundle, symptom_time: dateti
     for msg in check_type_fit(h.claim_type, h.confidence, cited, symptom_time):
         code = "time_sanity" if "postdates the symptom" in msg else "type_fit"
         violations.append(Violation(code, h.id, msg))
+
+    # 3b. unlinked_change (decision 0015): every cited change event must be linked to at
+    # least one cited metric. "Linked" is the bundle's own same-service alignment.
+    cited_ids = set(h.supporting)
+    for e in cited:
+        if e.type == EvidenceType.CHANGE_EVENT and not (
+            cited_ids & set(bundle.supporting.get(e.id, []))
+        ):
+            violations.append(Violation(
+                "unlinked_change", h.id,
+                f"{e.id}: no cited metric change follows it on the same service"))
 
     # 4. verification requests: allow-listed template, exact params, known service.
     for v in h.verification:

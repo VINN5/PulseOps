@@ -75,7 +75,7 @@ and a hash that the ID is derived from. Items are immutable.
 
 | Piece | Where | What it does |
 |---|---|---|
-| Citation checker | `ai/citation_checker/` | Rejects fabricated IDs, uncited claims, type/confidence mismatches, evidence that postdates the symptom, and disallowed verification templates or parameters |
+| Citation checker | `ai/citation_checker/` | Rejects fabricated IDs, uncited claims, type/confidence mismatches, evidence that postdates the symptom, cited change events with no linked metric, and disallowed verification templates or parameters |
 | Redactor | `ai/redactor/` | Pattern-based removal of tokens, keys, emails and IPs before text reaches a prompt |
 | Prompt | `ai/prompts/` | Versioned (`v2`, which states the exact JSON schema). Evidence is fenced in markers, angle brackets are neutralised, fields are truncated, and the model is told the block is untrusted data |
 | Orchestrator | `ai/hypotheses/` | One model call, one retry on zero acceptance, then fall back. Retry feedback uses fixed hint text only, never model-supplied strings |

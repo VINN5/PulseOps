@@ -44,6 +44,7 @@ _HINTS = {
     "time_sanity": "cited evidence postdates the symptom",
     "template_not_allowed": "a verification template is not on the allow-list",
     "bad_params": "a verification request had the wrong parameters",
+    "unlinked_change": "a cited change event has no cited metric change that followed it on the same service",
 }
 
 

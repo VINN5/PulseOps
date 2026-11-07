@@ -20,9 +20,9 @@ REAL_IDS = {e.id for e in BUNDLE.items}
 REAL = sorted(REAL_IDS)[0]
 MARKER = "IGNORE-ALL-RULES-4471"
 
-DEPLOY = next(
+CAUSE = next(
     e for e in BUNDLE.items
-    if e.type == EvidenceType.CHANGE_EVENT and e.subtype == "deploy"
+    if e.type == EvidenceType.CHANGE_EVENT and e.subtype == "config_change"
 )
 METRIC = next(e for e in BUNDLE.items if e.type == EvidenceType.METRIC_CHANGE)
 
@@ -32,9 +32,9 @@ def hyp(**over) -> dict:
     d = {
         "id": "H",
         "title": "t",
-        "claim_type": "bad_deploy",
+        "claim_type": "bad_config",
         "confidence": 0.5,
-        "supporting": [DEPLOY.id, METRIC.id],
+        "supporting": [CAUSE.id, METRIC.id],
         "contradicting": [],
         "verification": [],
     }
