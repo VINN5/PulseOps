@@ -1,9 +1,11 @@
 """Run a live model over a scenario several times and score it against the expected answer.
 
 Usage:
-    python scripts\\live_eval.py [scenario] [--runs N] [--pause SECONDS]
+    python scripts/live_eval.py [scenario] [--runs N] [--pause SECONDS] [--show]
 
-Prints one line per run and a summary. Output goes to the terminal only.
+--show prints every hypothesis the model proposed, whether the checker accepted it,
+which rules rejected it, and what each cited ID refers to.
+Output goes to the terminal only.
 """
 from __future__ import annotations
 
@@ -17,7 +19,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from pulseops.ai.hypotheses.orchestrator import run_model_step
+from pulseops.ai.citation_checker.checker import check_all
+from pulseops.ai.hypotheses.orchestrator import parse_output, run_model_step
 from pulseops.ai.llm_client.chain import model_from_env
 from pulseops.ai.llm_client.client import LLMError
 from pulseops.core.evidence_bundle.bundle import build_bundle
@@ -25,6 +28,19 @@ from pulseops.core.pipeline import run_pipeline
 from pulseops.evaluation.live_scoring import score_run
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+class Recorder:
+    """Wraps a model and keeps each raw reply so --show can re-check it afterwards."""
+
+    def __init__(self, inner) -> None:
+        self._inner = inner
+        self.replies: list[str] = []
+
+    def complete(self, prompt: str) -> str:
+        reply = self._inner.complete(prompt)
+        self.replies.append(reply)
+        return reply
 
 
 def label(model) -> str:
@@ -43,12 +59,33 @@ def evidence_id(pipeline_result, external_id: str) -> str | None:
     return None
 
 
+def show_replies(replies: list[str], bundle, symptom: datetime, names: dict[str, str]) -> None:
+    for n, raw in enumerate(replies, 1):
+        print(f"  reply {n}:")
+        try:
+            hypotheses = parse_output(raw)
+        except ValueError as e:
+            print(f"    unparseable ({e})")
+            continue
+        checked = check_all(hypotheses, bundle, symptom)
+        for h in checked.accepted:
+            print(f"    ACCEPT {h.id} {h.claim_type.value} conf={h.confidence}")
+            for i in h.supporting:
+                print(f"        cites {i} ({names.get(i, '?')})")
+        for h, violations in checked.rejected:
+            codes = sorted({v.code for v in violations})
+            print(f"    REJECT {h.id} {h.claim_type.value} conf={h.confidence} codes={codes}")
+            for i in h.supporting:
+                print(f"        cites {i} ({names.get(i, '?')})")
+
+
 def main() -> int:
     load_dotenv()
     ap = argparse.ArgumentParser()
     ap.add_argument("scenario", nargs="?", default="pool_exhaustion")
     ap.add_argument("--runs", type=int, default=3)
     ap.add_argument("--pause", type=float, default=3.0)
+    ap.add_argument("--show", action="store_true")
     args = ap.parse_args()
 
     base = ROOT / "scenarios" / args.scenario
@@ -61,6 +98,7 @@ def main() -> int:
 
     pipeline_result = run_pipeline(base / "capture")
     bundle = build_bundle(pipeline_result)
+    names = {e.id: f"{e.type.value}: {e.summary[:50]}" for e in bundle.items}
     trigger_id = evidence_id(pipeline_result, expected["trigger"])
     decoy_ids = [d for d in (evidence_id(pipeline_result, x) for x in expected["decoys"]) if d]
     if trigger_id is None:
@@ -68,17 +106,19 @@ def main() -> int:
         return 1
 
     try:
-        model = model_from_env()
+        inner = model_from_env()
     except LLMError as e:
         print(f"FAILED to build model: {e}")
         return 1
+    model = Recorder(inner)
 
-    print(f"scenario={args.scenario} model={label(model)} runs={args.runs}")
+    print(f"scenario={args.scenario} model={label(inner)} runs={args.runs}")
     print(f"trigger={trigger_id} decoys={decoy_ids} expected_type={expected['claim_type']}")
 
     scores = []
     reasons: Counter[str] = Counter()
     for i in range(1, args.runs + 1):
+        start = len(model.replies)
         result = run_model_step(model, bundle, symptom)
         s = score_run(result, trigger_id, decoy_ids, expected["claim_type"])
         scores.append(s)
@@ -88,6 +128,8 @@ def main() -> int:
             f"trigger_in_top={s.trigger_in_top} decoy_in_top={s.decoy_in_top} "
             f"decoy_anywhere={s.decoy_anywhere} type_match={s.type_match}"
         )
+        if args.show:
+            show_replies(model.replies[start:], bundle, symptom, names)
         if i < args.runs:
             time.sleep(args.pause)
 
