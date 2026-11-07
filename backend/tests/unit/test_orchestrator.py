@@ -18,17 +18,17 @@ SYMPTOM = datetime(2026, 3, 14, 2, 14, tzinfo=timezone.utc)
 
 
 def good() -> Hypothesis:
-    deploy = next(
+    cause = next(
         e for e in BUNDLE.items
-        if e.type == EvidenceType.CHANGE_EVENT and e.subtype == "deploy"
+        if e.type == EvidenceType.CHANGE_EVENT and e.subtype == "config_change"
     )
     metric = next(e for e in BUNDLE.items if e.type == EvidenceType.METRIC_CHANGE)
     return Hypothesis(
         id="H-good",
         title="t",
-        claim_type=ClaimType.BAD_DEPLOY,
+        claim_type=ClaimType.BAD_CONFIG,
         confidence=0.5,
-        supporting=[deploy.id, metric.id],
+        supporting=[cause.id, metric.id],
     )
 
 

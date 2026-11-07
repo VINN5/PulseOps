@@ -128,11 +128,11 @@ def test_checker_never_crashes_and_is_deterministic(h, t):
     assert first == check_hypothesis(h, BUNDLE, t)
 
 
-def test_positive_control_a_good_bad_deploy_claim_is_accepted():
-    deploy = next(e for e in BUNDLE.items
-                  if e.type == EvidenceType.CHANGE_EVENT and e.subtype == "deploy")
+def test_positive_control_a_good_bad_config_claim_is_accepted():
+    cause = next(e for e in BUNDLE.items
+                  if e.type == EvidenceType.CHANGE_EVENT and e.subtype == "config_change")
     metric = next(e for e in BUNDLE.items if e.type == EvidenceType.METRIC_CHANGE)
-    h = Hypothesis(id="H", title="t", claim_type=ClaimType.BAD_DEPLOY, confidence=0.5,
-                   supporting=[deploy.id, metric.id])
+    h = Hypothesis(id="H", title="t", claim_type=ClaimType.BAD_CONFIG, confidence=0.5,
+                   supporting=[cause.id, metric.id])
     t = datetime(2026, 3, 14, 2, 14, tzinfo=timezone.utc)
     assert check_hypothesis(h, BUNDLE, t) == []
