@@ -65,7 +65,11 @@ def show_replies(replies: list[str], bundle, symptom: datetime, names: dict[str,
         try:
             hypotheses = parse_output(raw)
         except ValueError as e:
-            print(f"    unparseable ({e})")
+            head = raw[:300].replace("\n", "\\n")
+            tail = raw[-120:].replace("\n", "\\n")
+            print(f"    unparseable ({e}), {len(raw)} chars")
+            print(f"      starts: {head}")
+            print(f"      ends:   {tail}")
             continue
         checked = check_all(hypotheses, bundle, symptom)
         for h in checked.accepted:
