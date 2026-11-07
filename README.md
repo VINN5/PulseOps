@@ -77,7 +77,7 @@ and a hash that the ID is derived from. Items are immutable.
 |---|---|---|
 | Citation checker | `ai/citation_checker/` | Rejects fabricated IDs, uncited claims, type/confidence mismatches, evidence that postdates the symptom, and disallowed verification templates or parameters |
 | Redactor | `ai/redactor/` | Pattern-based removal of tokens, keys, emails and IPs before text reaches a prompt |
-| Prompt | `ai/prompts/` | Versioned (`v1`). Evidence is fenced in markers, angle brackets are neutralised, fields are truncated, and the model is told the block is untrusted data |
+| Prompt | `ai/prompts/` | Versioned (`v2`, which states the exact JSON schema). Evidence is fenced in markers, angle brackets are neutralised, fields are truncated, and the model is told the block is untrusted data |
 | Orchestrator | `ai/hypotheses/` | One model call, one retry on zero acceptance, then fall back. Retry feedback uses fixed hint text only, never model-supplied strings |
 | LLM clients | `ai/llm_client/` | Anthropic, plus any OpenAI-compatible provider (Groq, Gemini, OpenRouter), with bounded retries and no prompt or key in logs. A fallback chain can try several models in order |
 
@@ -200,7 +200,7 @@ backend/
     ├── unit/            # per-module tests, including orchestrator, prompt, clients
     ├── property/        # hypothesis-based tests for the checker and redactor
     └── mock_model/      # a scripted FakeModel for tests
-docs/decisions/          # decision records 0001-0013
+docs/decisions/          # decision records 0001-0014
 scenarios/               # synthetic captures with expected root causes
 scripts/                 # smoke_llm.py and other one-off utilities
 ```
@@ -277,6 +277,7 @@ These are documented in full in [`docs/decisions/`](docs/decisions/). The import
 | 0011 | Retry-feedback leak (fixed) |
 | 0012 | Redaction is best-effort |
 | 0013 | `untrusted_paths` unused; redaction scope |
+| 0014 | The prompt must state the output schema |
 
 ---
 
