@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import time
 from collections.abc import Callable
 
@@ -13,15 +14,65 @@ API_VERSION = "2023-06-01"
 DEFAULT_MODEL = "claude-sonnet-5-5"
 RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504, 529})
 
+# Provider-supplied tokens (error codes, model names) are kept only if they look like this.
+SAFE_TOKEN = re.compile(r"[A-Za-z0-9_.:/-]{1,60}")
+
 log = structlog.get_logger(__name__)
 
 
 class LLMError(Exception):
     """Any failure to get text from the model.
 
-    Messages contain a short reason and a status code only: never the prompt,
-    the response body or the API key.
+    The message holds a short reason, a status code and a sanitised provider code: never the
+    prompt, the response body, the provider's message text or the API key.
     """
+
+    def __init__(
+        self, message: str, *, status: int | None = None, code: str | None = None
+    ) -> None:
+        super().__init__(message)
+        self.status = status
+        self.code = code
+
+
+def error_code(resp: httpx.Response | None) -> str | None:
+    """A short machine code from an error body, or None. Never returns message text."""
+    if resp is None:
+        return None
+    try:
+        err = resp.json()["error"]
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return None
+    candidates: list[object] = []
+    if isinstance(err, dict):
+        candidates = [err.get("type"), err.get("code")]
+        meta = err.get("metadata")
+        if isinstance(meta, dict):
+            candidates.append(meta.get("provider_error_code"))
+    for c in candidates:
+        if isinstance(c, (str, int)) and not isinstance(c, bool):
+            s = str(c)
+            if SAFE_TOKEN.fullmatch(s):
+                return s
+    return None
+
+
+def retry_delay(attempt: int, resp: httpx.Response | None) -> float:
+    """Seconds to wait before the next try. Honours Retry-After, capped at 30s."""
+    if resp is not None:
+        raw = resp.headers.get("retry-after")
+        if raw:
+            try:
+                return min(max(float(raw), 0.0), 30.0)
+            except ValueError:
+                pass
+        if resp.status_code == 429:
+            return min(5.0 * 2.0 ** attempt, 30.0)
+    return min(2.0 ** attempt, 8.0)
+
+
+def describe(prefix: str, status: int | str, code: str | None) -> str:
+    return f"{prefix} (status {status}" + (f", {code}" if code else "") + ")"
 
 
 class AnthropicModel:
@@ -66,18 +117,26 @@ class AnthropicModel:
             except httpx.TransportError as e:
                 resp = None
                 status = type(e).__name__
+            ok = resp is not None and resp.status_code == 200
+            code = None if ok else error_code(resp)
             log.info(
                 "llm_call", model=self._model, attempt=attempt + 1,
-                prompt_chars=len(prompt), prompt_sha=digest, status=status,
+                prompt_chars=len(prompt), prompt_sha=digest, status=status, code=code,
             )
             if resp is not None and resp.status_code == 200:
                 return self._text(resp)
+            http_status = resp.status_code if resp is not None else None
             retryable = resp is None or resp.status_code in RETRYABLE_STATUS
             if not retryable:
-                raise LLMError(f"request rejected with status {status}") from None
+                raise LLMError(
+                    describe("request rejected", status, code), status=http_status, code=code
+                ) from None
             if attempt == self._max_retries:
-                raise LLMError(f"gave up after {attempt + 1} attempts (last: {status})") from None
-            self._sleep(min(2.0 ** attempt, 8.0))
+                raise LLMError(
+                    describe(f"gave up after {attempt + 1} attempts", status, code),
+                    status=http_status, code=code,
+                ) from None
+            self._sleep(retry_delay(attempt, resp))
         raise LLMError("unreachable")  # pragma: no cover
 
     @staticmethod

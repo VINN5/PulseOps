@@ -12,8 +12,12 @@ import structlog
 from pulseops.ai.llm_client.client import (
     DEFAULT_MODEL,
     RETRYABLE_STATUS,
+    SAFE_TOKEN,
     AnthropicModel,
     LLMError,
+    describe,
+    error_code,
+    retry_delay,
 )
 
 log = structlog.get_logger(__name__)
@@ -49,6 +53,15 @@ PROVIDERS: dict[str, Provider] = {
 }
 
 
+def answered_model(resp: httpx.Response) -> str | None:
+    """The model name the provider says answered, if it looks safe to record."""
+    try:
+        m = resp.json().get("model")
+    except (ValueError, AttributeError):
+        return None
+    return m if isinstance(m, str) and SAFE_TOKEN.fullmatch(m) else None
+
+
 class OpenAICompatModel:
     """Implements the orchestrator's Model protocol for any /chat/completions provider.
 
@@ -73,6 +86,7 @@ class OpenAICompatModel:
         self._key = key
         self.provider_name = provider.name
         self.model_name = model or provider.default_model
+        self.answered_by: str | None = None
         self._max_tokens = max_tokens
         self._timeout = timeout
         self._max_retries = max_retries
@@ -98,19 +112,33 @@ class OpenAICompatModel:
             except httpx.TransportError as e:
                 resp = None
                 status = type(e).__name__
+            ok = resp is not None and resp.status_code == 200
+            code = None if ok else error_code(resp)
             log.info(
                 "llm_call", provider=self.provider_name, model=self.model_name,
                 attempt=attempt + 1, prompt_chars=len(prompt), prompt_sha=digest,
-                status=status,
+                status=status, code=code,
             )
             if resp is not None and resp.status_code == 200:
-                return self._text(resp)
+                text = self._text(resp)
+                self.answered_by = answered_model(resp)
+                log.info(
+                    "llm_answer", provider=self.provider_name,
+                    requested=self.model_name, answered=self.answered_by,
+                )
+                return text
+            http_status = resp.status_code if resp is not None else None
             retryable = resp is None or resp.status_code in RETRYABLE_STATUS
             if not retryable:
-                raise LLMError(f"request rejected with status {status}") from None
+                raise LLMError(
+                    describe("request rejected", status, code), status=http_status, code=code
+                ) from None
             if attempt == self._max_retries:
-                raise LLMError(f"gave up after {attempt + 1} attempts (last: {status})") from None
-            self._sleep(min(2.0 ** attempt, 8.0))
+                raise LLMError(
+                    describe(f"gave up after {attempt + 1} attempts", status, code),
+                    status=http_status, code=code,
+                ) from None
+            self._sleep(retry_delay(attempt, resp))
         raise LLMError("unreachable")  # pragma: no cover
 
     @staticmethod
