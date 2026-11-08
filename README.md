@@ -200,7 +200,7 @@ backend/
     ├── unit/            # per-module tests, including orchestrator, prompt, clients
     ├── property/        # hypothesis-based tests for the checker and redactor
     └── mock_model/      # a scripted FakeModel for tests
-docs/decisions/          # decision records 0001-0015
+docs/decisions/          # decision records 0001-0016
 scenarios/               # synthetic captures with expected root causes
 scripts/                 # smoke_llm.py and other one-off utilities
 ```
@@ -279,6 +279,7 @@ These are documented in full in [`docs/decisions/`](docs/decisions/). The import
 | 0013 | `untrusted_paths` unused; redaction scope |
 | 0014 | The prompt must state the output schema |
 | 0015 | Type-fit checks types, not relationships |
+| 0016 | LLM errors carry status and a sanitised code |
 
 ---
 
