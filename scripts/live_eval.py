@@ -5,7 +5,8 @@ Usage:
 
 --show prints every hypothesis the model proposed, whether the checker accepted it,
 which rules rejected it, and what each cited ID refers to.
-Output goes to the terminal only.
+The summary also counts failed model calls by HTTP status and code, and the models that
+answered. Output goes to the terminal only.
 """
 from __future__ import annotations
 
@@ -26,21 +27,9 @@ from pulseops.ai.llm_client.client import LLMError
 from pulseops.core.evidence_bundle.bundle import build_bundle
 from pulseops.core.pipeline import run_pipeline
 from pulseops.evaluation.live_scoring import score_run
+from pulseops.evaluation.recorder import Recorder
 
 ROOT = Path(__file__).resolve().parents[1]
-
-
-class Recorder:
-    """Wraps a model and keeps each raw reply so --show can re-check it afterwards."""
-
-    def __init__(self, inner) -> None:
-        self._inner = inner
-        self.replies: list[str] = []
-
-    def complete(self, prompt: str) -> str:
-        reply = self._inner.complete(prompt)
-        self.replies.append(reply)
-        return reply
 
 
 def label(model) -> str:
@@ -146,6 +135,8 @@ def main() -> int:
     print(f"decoy cited anywhere:    {sum(s.decoy_anywhere for s in scores)}/{n}")
     print(f"claim_type matched:      {sum(s.type_match for s in scores)}/{n}")
     print(f"rejection reasons:       {dict(reasons) or 'none'}")
+    print(f"call failures by status: {model.failure_counts() or 'none'}")
+    print(f"answering models:        {model.answered_counts() or 'not reported'}")
     return 0
 
 

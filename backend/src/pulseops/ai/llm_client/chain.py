@@ -6,7 +6,7 @@ from typing import Protocol
 
 import structlog
 
-from pulseops.ai.llm_client.client import DEFAULT_MODEL, AnthropicModel, LLMError
+from pulseops.ai.llm_client.client import DEFAULT_MODEL, AnthropicModel, LLMError, describe
 from pulseops.ai.llm_client.openai_compat import PROVIDERS, OpenAICompatModel, make_model
 
 log = structlog.get_logger(__name__)
@@ -26,21 +26,43 @@ class FallbackModel:
     """Tries each model in order; moves on when one raises LLMError.
 
     This covers availability (down, rate-limited, retired). Bad output is the
-    orchestrator's job, not this class's.
+    orchestrator's job, not this class's. If every model fails, the raised error carries
+    the LAST model's status and code. After a success, answered_label names the chain link
+    that answered and answered_by is the provider-reported model, when there is one.
     """
 
     def __init__(self, models: Sequence[_Completer]) -> None:
         if not models:
             raise ValueError("FallbackModel needs at least one model")
         self.models = tuple(models)
+        self.answered_label: str | None = None
+        self.answered_by: str | None = None
 
     def complete(self, prompt: str) -> str:
+        self.answered_label = None
+        self.answered_by = None
+        last: LLMError | None = None
         for m in self.models:
             try:
-                return m.complete(prompt)
+                text = m.complete(prompt)
             except LLMError as e:
+                last = e
                 log.warning("llm_fallback", model=_label(m), reason=str(e))
-        raise LLMError(f"all {len(self.models)} models in the chain failed")
+                continue
+            self.answered_label = _label(m)
+            self.answered_by = getattr(m, "answered_by", None)
+            return text
+        status = last.status if last is not None else None
+        code = last.code if last is not None else None
+        raise LLMError(
+            describe(
+                f"all {len(self.models)} models in the chain failed",
+                status if status is not None else "n/a",
+                code,
+            ),
+            status=status,
+            code=code,
+        )
 
 
 def make_chain(spec: str, **kwargs) -> FallbackModel:
