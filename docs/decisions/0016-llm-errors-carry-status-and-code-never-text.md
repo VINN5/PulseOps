@@ -24,3 +24,5 @@ can swap models between calls.
 - The orchestrator still reports model_error. The per-status counts need the chain and
   the evaluation script to pass the status through; see the next change.
 - Update: FallbackModel now raises with the last link's status and code and records which link answered. live_eval.py prints failure counts by status/code and the answering models, via evaluation/recorder.py.
+- Update: FallbackModel now raises with the last link's status and code and records which link answered. live_eval.py prints failure counts by status/code and the answering models, via evaluation/recorder.py.
+- Update: FallbackModel now raises with the last link's status and code and records which link answered. live_eval.py prints failure counts by status/code and the answering models, via evaluation/recorder.py.
