@@ -11,13 +11,15 @@ class _Completer(Protocol):
 
 
 class Recorder:
-    """Wraps a model. Keeps raw replies, failures by status/code, and which model answered."""
+    """Wraps a model. Keeps raw replies, failures by status/code, which model answered and why
+    generation stopped."""
 
     def __init__(self, inner: _Completer) -> None:
         self._inner = inner
         self.replies: list[str] = []
         self.failures: list[tuple[int | None, str | None]] = []
         self.answered: list[str] = []
+        self.finish_reasons: list[str] = []
 
     def complete(self, prompt: str) -> str:
         try:
@@ -31,6 +33,9 @@ class Recorder:
         )
         if isinstance(name, str):
             self.answered.append(name)
+        finish = getattr(self._inner, "finish_reason", None)
+        if isinstance(finish, str):
+            self.finish_reasons.append(finish)
         return reply
 
     def failure_counts(self) -> dict[str, int]:
@@ -42,3 +47,6 @@ class Recorder:
 
     def answered_counts(self) -> dict[str, int]:
         return dict(Counter(self.answered))
+
+    def finish_counts(self) -> dict[str, int]:
+        return dict(Counter(self.finish_reasons))
