@@ -12,6 +12,7 @@ from pulseops.ai.llm_client.openai_compat import (
     OpenAICompatModel,
     make_model,
     resolve_max_tokens,
+    resolve_timeout,
 )
 
 log = structlog.get_logger(__name__)
@@ -73,6 +74,7 @@ class FallbackModel:
 def make_chain(spec: str, **kwargs) -> FallbackModel:
     """Build a chain from 'provider[:model],provider[:model],...'."""
     kwargs.setdefault('max_tokens', resolve_max_tokens())
+    kwargs.setdefault('timeout', resolve_timeout())
     models: list[OpenAICompatModel | AnthropicModel] = []
     for raw in spec.split(","):
         item = raw.strip()

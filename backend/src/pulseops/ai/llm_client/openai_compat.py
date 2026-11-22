@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import os
 import time
 from collections.abc import Callable
@@ -24,7 +25,7 @@ log = structlog.get_logger(__name__)
 
 # Reasoning models spend output tokens on thinking before they write the answer. At 1500 one
 # did not finish thinking and returned no text (decision 0017).
-DEFAULT_MAX_TOKENS = 4000
+DEFAULT_MAX_TOKENS = 8000
 
 
 @dataclass(frozen=True)
@@ -82,6 +83,24 @@ def resolve_max_tokens() -> int:
         raise LLMError("PULSEOPS_MAX_TOKENS must be a positive integer") from None
     if value < 1:
         raise LLMError("PULSEOPS_MAX_TOKENS must be a positive integer")
+    return value
+
+
+# Reasoning calls took 15-30s at 4000 tokens and one hit the old 30s timeout (decision 0018).
+DEFAULT_TIMEOUT = 120.0
+
+
+def resolve_timeout() -> float:
+    """PULSEOPS_TIMEOUT (seconds) if set, else DEFAULT_TIMEOUT."""
+    raw = os.environ.get("PULSEOPS_TIMEOUT", "").strip()
+    if not raw:
+        return DEFAULT_TIMEOUT
+    try:
+        value = float(raw)
+    except ValueError:
+        raise LLMError("PULSEOPS_TIMEOUT must be a positive number of seconds") from None
+    if not math.isfinite(value) or value <= 0:
+        raise LLMError("PULSEOPS_TIMEOUT must be a positive number of seconds")
     return value
 
 
@@ -197,6 +216,7 @@ def make_model(
     name = provider or os.environ.get("PULSEOPS_PROVIDER") or "groq"
     chosen = model or os.environ.get("PULSEOPS_MODEL") or None
     kwargs.setdefault("max_tokens", resolve_max_tokens())
+    kwargs.setdefault("timeout", resolve_timeout())
     if name == "anthropic":
         return AnthropicModel(model=chosen or DEFAULT_MODEL, **kwargs)
     spec = PROVIDERS.get(name)
