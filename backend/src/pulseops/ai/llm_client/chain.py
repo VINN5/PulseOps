@@ -7,7 +7,12 @@ from typing import Protocol
 import structlog
 
 from pulseops.ai.llm_client.client import DEFAULT_MODEL, AnthropicModel, LLMError, describe
-from pulseops.ai.llm_client.openai_compat import PROVIDERS, OpenAICompatModel, make_model
+from pulseops.ai.llm_client.openai_compat import (
+    PROVIDERS,
+    OpenAICompatModel,
+    make_model,
+    resolve_max_tokens,
+)
 
 log = structlog.get_logger(__name__)
 
@@ -67,6 +72,7 @@ class FallbackModel:
 
 def make_chain(spec: str, **kwargs) -> FallbackModel:
     """Build a chain from 'provider[:model],provider[:model],...'."""
+    kwargs.setdefault('max_tokens', resolve_max_tokens())
     models: list[OpenAICompatModel | AnthropicModel] = []
     for raw in spec.split(","):
         item = raw.strip()

@@ -137,6 +137,7 @@ def main() -> int:
     print(f"rejection reasons:       {dict(reasons) or 'none'}")
     print(f"call failures by status: {model.failure_counts() or 'none'}")
     print(f"answering models:        {model.answered_counts() or 'not reported'}")
+    print(f"finish reasons:          {model.finish_counts() or 'not reported'}")
     return 0
 
 
