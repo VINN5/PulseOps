@@ -78,7 +78,7 @@ def test_default_max_tokens_comes_from_the_factory(monkeypatch):
     monkeypatch.delenv("PULSEOPS_MAX_TOKENS", raising=False)
     monkeypatch.delenv("PULSEOPS_MODEL", raising=False)
     m = make_model("groq")
-    assert m.max_tokens == DEFAULT_MAX_TOKENS == 4000
+    assert m.max_tokens == DEFAULT_MAX_TOKENS == 8000
 
 
 def test_env_overrides_max_tokens(monkeypatch):

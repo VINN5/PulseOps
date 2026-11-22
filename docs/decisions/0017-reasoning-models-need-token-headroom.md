@@ -24,3 +24,4 @@ finish_reason, and Recorder counts it, so the evaluation summary shows how gener
   visible only through the finish-reason counts.
 - FallbackModel does not forward finish_reason, so chain runs do not report it yet.
 - Constructor defaults stay at 1500; only the factories apply the new default.
+- Superseded in part by 0018: the factory default is now 8000 tokens, after 2 of 14 calls hit 4000.

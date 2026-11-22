@@ -170,7 +170,8 @@ and set `PULSEOPS_MODEL`.
 | `PULSEOPS_PROVIDER` | Which provider to use (default `groq`) |
 | `PULSEOPS_MODEL` | Override the provider's default model |
 | `PULSEOPS_CHAIN` | Try several models in order, e.g. `groq:openai/gpt-oss-120b,openrouter` |
-| `PULSEOPS_MAX_TOKENS` | Output token limit per call (default 4000; reasoning models need room) |
+| `PULSEOPS_MAX_TOKENS` | Output token limit per call (default 8000; reasoning models need room) |
+| `PULSEOPS_TIMEOUT` | Seconds before a call times out (default 120) |
 
 Check that a key and model work with one tiny call:
 
@@ -201,7 +202,7 @@ backend/
     ├── unit/            # per-module tests, including orchestrator, prompt, clients
     ├── property/        # hypothesis-based tests for the checker and redactor
     └── mock_model/      # a scripted FakeModel for tests
-docs/decisions/          # decision records 0001-0017
+docs/decisions/          # decision records 0001-0018
 scenarios/               # synthetic captures with expected root causes
 scripts/                 # smoke_llm.py and other one-off utilities
 ```
@@ -282,6 +283,7 @@ These are documented in full in [`docs/decisions/`](docs/decisions/). The import
 | 0015 | Type-fit checks types, not relationships |
 | 0016 | LLM errors carry status and a sanitised code |
 | 0017 | Reasoning models need token headroom |
+| 0018 | Longer timeout and token limit |
 
 ---
 
