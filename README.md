@@ -77,7 +77,7 @@ and a hash that the ID is derived from. Items are immutable.
 |---|---|---|
 | Citation checker | `ai/citation_checker/` | Rejects fabricated IDs, uncited claims, type/confidence mismatches, evidence that postdates the symptom, cited change events with no linked metric, and disallowed verification templates or parameters |
 | Redactor | `ai/redactor/` | Pattern-based removal of tokens, keys, emails and IPs before text reaches a prompt |
-| Prompt | `ai/prompts/` | Versioned (`v2`, which states the exact JSON schema). Evidence is fenced in markers, angle brackets are neutralised, fields are truncated, and the model is told the block is untrusted data |
+| Prompt | `ai/prompts/` | Versioned (`v3`: states the exact JSON schema and asks for empty `verification`). Evidence is fenced in markers, angle brackets are neutralised, fields are truncated, and the model is told the block is untrusted data |
 | Orchestrator | `ai/hypotheses/` | One model call, one retry on zero acceptance, then fall back. Retry feedback uses fixed hint text only, never model-supplied strings |
 | LLM clients | `ai/llm_client/` | Anthropic, plus any OpenAI-compatible provider (Groq, Gemini, OpenRouter), with bounded retries and no prompt or key in logs. A fallback chain can try several models in order |
 
@@ -202,7 +202,7 @@ backend/
     ├── unit/            # per-module tests, including orchestrator, prompt, clients
     ├── property/        # hypothesis-based tests for the checker and redactor
     └── mock_model/      # a scripted FakeModel for tests
-docs/decisions/          # decision records 0001-0018
+docs/decisions/          # decision records 0001-0019
 scenarios/               # synthetic captures with expected root causes
 scripts/                 # smoke_llm.py and other one-off utilities
 ```
@@ -284,6 +284,7 @@ These are documented in full in [`docs/decisions/`](docs/decisions/). The import
 | 0016 | LLM errors carry status and a sanitised code |
 | 0017 | Reasoning models need token headroom |
 | 0018 | Longer timeout and token limit |
+| 0019 | Prompt v3 asks for empty verification |
 
 ---
 
